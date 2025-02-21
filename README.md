@@ -11,6 +11,7 @@
 - [Open WebUI Documentation](https://docs.openwebui.com/)
 - [Podman Installation](https://podman.io/docs/installation)
 - [Docker Installation (Ubuntu)](https://docs.docker.com/engine/install/ubuntu/)
+- [Configure Podman GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
 
 ---
 
@@ -51,19 +52,44 @@ wsl --shutdown
 
 ---
 
-## **2. Verify GPU Support**
+## **2. Check and Configure GPU in WSL for Podman**
 
-Check NVIDIA GPU status:
+### **2.1 Verify GPU Access in WSL**
 
-```sh
-nvidia-smi
-```
-
-Monitor GPU usage:
+Before setting up Podman, ensure WSL detects your GPU:
 
 ```sh
-watch -n 1 nvidia-smi
+ls /dev/dxg
 ```
+
+If this file does not exist, update WSL and restart it:
+
+```sh
+wsl --update
+wsl --shutdown
+```
+
+### **2.2 Enable GPU CDI for Podman**
+
+Run the following command to generate CDI configuration:
+
+```sh
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
+
+Verify CDI files exist:
+
+```sh
+ls /etc/cdi
+```
+
+List available CDI devices:
+
+```sh
+nvidia-ctk cdi list
+```
+
+If `nvidia.com/gpu=all` appears in the output, CDI is properly configured.
 
 ---
 
@@ -89,11 +115,10 @@ podman network create my-ollama-net
 
 ### **Ollama Container (GPU Mode)**
 
-This command runs the **Ollama** container in detached mode (`-d`) with GPU acceleration enabled, ensuring that the container has access to all GPUs.
-
 ```sh
 podman run -d \
   --gpus=all \
+  --device nvidia.com/gpu=all \
   -v /home/$USER/ollama_data:/root/.ollama \
   -p 127.0.0.1:11434:11434 \
   --network=my-ollama-net \
@@ -103,22 +128,16 @@ podman run -d \
 
 ### **Ollama Container (CPU-Only Mode)**
 
-If you do not have a compatible GPU or prefer to run Ollama on the CPU, remove the `--gpus=all` flag and use the following command:
-
 ```sh
 podman run -d \
-  -v /home/$USER/ollama_data:/root/.ollama \
+  -v /hom/$USER/ollama_data:/root/.ollama \
   -p 127.0.0.1:11434:11434 \
   --network=my-ollama-net \
   --name ollama \
   docker.io/ollama/ollama
 ```
 
----
-
 ### **Open WebUI Container**
-
-This command runs **Open WebUI** as a detached container, linking it with the **Ollama** backend.
 
 ```sh
 podman run -d \
@@ -138,35 +157,27 @@ podman run -d \
 podman ps -a
 ```
 
+```sh
+podman exec -it ollama nvidia-smi
+```
+
 ---
 
 ## **7. Kill Switch from Windows**
 
-To quickly stop the containers or the entire WSL instance, you can create shortcuts or scripts:
-
 ### **Stopping Containers Only**
 
-#### **Windows Command Prompt (cmd) Script:**
+#### **Command Prompt (cmd):**
 
 ```cmd
-@echo off
-wsl -d Ubuntu-24.04 -e podman stop open-webui
-wsl -d Ubuntu-24.04 -e podman stop ollama
-exit
+wsl.exe -d Ubuntu-24.04 -- podman stop ollama && wsl.exe -d Ubuntu-24.04 -- podman stop open-webui
 ```
-
-Save this as `stop_ollama.bat` and double-click to stop the containers.
 
 #### **PowerShell Script:**
 
 ```powershell
-Write-Output "Stopping Open WebUI and Ollama..."
-wsl -d Ubuntu-24.04 -e podman stop open-webui
-wsl -d Ubuntu-24.04 -e podman stop ollama
-Write-Output "Containers stopped."
+powershell -Command "& {wsl -d Ubuntu-24.04 -e podman stop ollama; wsl -d Ubuntu-24.04 -e podman stop open-webui}"
 ```
-
-Save as `stop_ollama.ps1` and run it in PowerShell.
 
 ### **Stopping WSL Ubuntu-24.04 (Including All Running Containers)**
 
@@ -174,69 +185,176 @@ Save as `stop_ollama.ps1` and run it in PowerShell.
 wsl -t Ubuntu-24.04
 ```
 
-This completely stops WSL and any running containers inside it.
-
 ### **Creating Windows Shortcuts for Start/Stop**
 
-Instead of scripts, you can create shortcuts:
-
-1. **Right-click on Desktop → New → Shortcut**
-2. **For stopping containers**, use:
-   ```
-   powershell -Command "& {wsl -d Ubuntu-24.04 -e podman stop open-webui; wsl -d Ubuntu-24.04 -e podman stop ollama}"
-   ```
-3. **For starting containers**, use:
-   ```
-   powershell -Command "& {wsl -d Ubuntu-24.04 -e podman start ollama; wsl -d Ubuntu-24.04 -e podman start open-webui}"
-   ```
-4. Name the shortcuts appropriately (e.g., "Stop WSL & Containers", "Start Containers").
-5. Optionally, change icons for better recognition.
-
-Now, you can easily start or stop everything with one click. 🚀
+- **Monitor utilization:**
+  ```
+  wsl.exe -d Ubuntu-24.04 -e watch -n 1 podman exec -it ollama nvidia-smi
+  ```
+- **Stop Containers:**
+  ```
+  wsl.exe -d Ubuntu-24.04 -- podman stop ollama && wsl.exe -d Ubuntu-24.04 -- podman stop open-webui
+  ```
+- **Start Containers:**
+  ```
+  wsl.exe -d Ubuntu-24.04 -- podman start ollama && wsl.exe -d Ubuntu-24.04 -- podman start open-webui
+  ```
 
 ---
 
 ## **8. Download Models**
 
-Run the following commands to pull models into Ollama:
-
+```sh
+podman exec -it ollama ollama pull gemma
+```
 ```sh
 podman exec -it ollama ollama pull gemma:2b
+```
+```sh
+podman exec -it ollama ollama pull gemma2
+```
+```sh
+podman exec -it ollama ollama pull gemma2:2b
+```
+```sh
+podman exec -it ollama ollama pull qwen2.5-coder
+```
+```sh
+podman exec -it ollama ollama pull qwen2.5-coder:3b
+```
+```sh
+podman exec -it ollama ollama pull qwen2.5-coder:1.5b
+```
+```sh
+podman exec -it ollama ollama pull qwen2.5-coder:0.5b
+```
+```sh
+podman exec -it ollama ollama pull codellama
+```
+```sh
+podman exec -it ollama ollama pull llama3.2-vision
+```
+```sh
+podman exec -it ollama ollama pull mistral-nemo
+```
+```sh
+podman exec -it ollama ollama pull starcoder2
+```
+```sh
+podman exec -it ollama ollama pull starcoder2:7b
+```
+```sh
+podman exec -it ollama ollama pull dolphin3
+```
+```sh
+podman exec -it ollama ollama pull deepscaler
+```
+```sh
 podman exec -it ollama ollama pull llama3.2:1b
+```
+```sh
+podman exec -it ollama ollama pull llama3.2
+```
+```sh
 podman exec -it ollama ollama pull deepseek-r1:1.5b
+```
+```sh
+podman exec -it ollama ollama pull deepseek-r1
+```
+```sh
+podman exec -it ollama ollama pull deepseek-r1:8b
+```
+```sh
+podman exec -it ollama ollama pull deepseek-coder-v2
+```
+```sh
+podman exec -it ollama ollama pull deepseek-coder
+```
+```sh
+podman exec -it ollama ollama pull deepseek-coder:6.7b
+```
+```sh
+podman exec -it ollama ollama pull llama2-uncensored
+```
+```sh
+podman exec -it ollama ollama pull openthinker
+```
+```sh
+podman exec -it ollama ollama pull codegemma
+```
+```sh
+podman exec -it ollama ollama pull codegemma:2b
+```
+```sh
+podman exec -it ollama ollama pull phi
+```
+```sh
+podman exec -it ollama ollama pull llava
+```
+```sh
+podman exec -it ollama ollama pull phi3
+```
+```sh
 podman exec -it ollama ollama pull mistral
 ```
 
 ---
 
+
 ## **9. Troubleshooting**
 
-### **Clear Cache in Open WebUI**
+### **General Issues**
 
-```sh
-podman exec -it open-webui /bin/sh -c "rm -rf /app/backend/data/cache/*"
-```
+- **Restart Podman Service**
+  ```sh
+  systemctl --user restart podman
+  ```
+- **Check Containers**
+  ```sh
+  podman ps -a
+  ```
 
-### **Check Connection to Ollama**
+### **Ollama Issues**
 
-```sh
-podman exec -it open-webui curl -X GET http://ollama:11434/api/tags
-```
+- **Check Connection to Ollama**
+  ```sh
+  podman exec -it open-webui curl -X GET http://ollama:11434/api/tags
+  ```
+- **Clear Cache in Open WebUI**
+  ```sh
+  podman exec -it open-webui /bin/sh -c "rm -rf /app/backend/data/cache/*"
+  ```
+- **Check GPU in Ollama**
+  ```sh
+  podman exec -it ollama nvidia-smi
+  ```
 
-### **Restart Podman Service**
+### **Podman Network Issues**
 
-```sh
-systemctl --user restart podman
-```
+- **Check Podman Network**
+  ```sh
+  podman network inspect my-ollama-net
+  ```
+- **Check Container IP Addresses**
+  ```sh
+  podman inspect ollama | grep '"IPAddress"'
+  podman inspect open-webui | grep '"IPAddress"'
+  ```
 
-### **Inspect Network and Containers**
+### **GPU Issues**
 
-```sh
-podman network inspect my-ollama-net
-podman inspect ollama | grep '"IPAddress"'
-podman inspect open-webui | grep '"IPAddress"'
-```
-
+- **Check if GPU is Detected in WSL**
+  ```sh
+  ls /dev/dxg
+  ```
+- **Check if CDI is Registered**
+  ```sh
+  nvidia-ctk cdi list
+  ```
+- **Test GPU in Podman**
+  ```sh
+  podman run --rm --device nvidia.com/gpu=all docker.io/nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+  ```
 ---
 
 This setup ensures that **Ollama** runs as a local backend LLM service and **Open WebUI** serves as a frontend interface, all within an isolated Podman network.
