@@ -76,7 +76,7 @@ podman network create my-ollama-net
 
 ## **5. Create and Run Containers**
 
-### **Ollama Container**
+### **Ollama Container (GPU Mode)**
 This command runs the **Ollama** container in detached mode (`-d`) with GPU acceleration enabled, ensuring that the container has access to all GPUs.
 
 ```sh
@@ -89,8 +89,20 @@ podman run -d \
   docker.io/ollama/ollama
 ```
 
+### **Ollama Container (CPU-Only Mode)**
+If you do not have a compatible GPU or prefer to run Ollama on the CPU, remove the `--gpus=all` flag and use the following command:
+
+```sh
+podman run -d \
+  -v /home/$USER/ollama_data:/root/.ollama \
+  -p 127.0.0.1:11434:11434 \
+  --network=my-ollama-net \
+  --name ollama \
+  docker.io/ollama/ollama
+```
+
 #### **Explanation of the options:**
-- `--gpus=all` → Enables GPU acceleration for the container.
+- `--gpus=all` (only in GPU mode) → Enables GPU acceleration for the container.
 - `-v /home/$USER/ollama_data:/root/.ollama` → Mounts the host directory `/home/$USER/ollama_data` into the container at `/root/.ollama`. This ensures that downloaded models persist even after restarting the container.
 - `-p 127.0.0.1:11434:11434` → Maps port `11434` on the host to the container, making Ollama accessible **only locally**.
 - `--network=my-ollama-net` → Attaches the container to the internal Podman network `my-ollama-net` for secure communication with Open WebUI.
