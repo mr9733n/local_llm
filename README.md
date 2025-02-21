@@ -165,15 +165,13 @@ podman exec -it ollama nvidia-smi
 
 ## **7. Kill Switch from Windows**
 
-### **Stopping Containers Only**
-
-#### **Command Prompt (cmd):**
-
-```cmd
-wsl.exe -d Ubuntu-24.04 -- podman stop ollama && wsl.exe -d Ubuntu-24.04 -- podman stop open-webui
-```
+### **Start/Stop Containers Only**
 
 #### **PowerShell Script:**
+
+```powershell
+powershell -Command "& {wsl -d Ubuntu-24.04 -e podman start ollama; wsl -d Ubuntu-24.04 -e podman start open-webui}"
+```
 
 ```powershell
 powershell -Command "& {wsl -d Ubuntu-24.04 -e podman stop ollama; wsl -d Ubuntu-24.04 -e podman stop open-webui}"
@@ -360,6 +358,35 @@ podman exec -it ollama ollama pull mistral
   ```sh
   podman run --rm --device nvidia.com/gpu=all docker.io/nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
   ```
+
+### **Memory Issues**
+
+- **Check cache in use**
+  ```sh
+  cat /proc/meminfo | grep -i cache
+  ```
+- **Check mem**
+  ```sh
+  free -h
+  ```
+- **Clean cache**
+  ```sh
+  echo 3 | sudo tee /proc/sys/vm/drop_caches
+  ```
+- **Confugure WSL**
+  ```cmd
+  notepad $env:USERPROFILE/.wslconfig
+  ```
+  ```ini
+  [wsl2]
+  memory=8GB
+  swap=4GB
+  ```
+  ```cmd
+  wsl --shutdown
+  ```
+
+
 ---
 
 This setup ensures that **Ollama** runs as a local backend LLM service and **Open WebUI** serves as a frontend interface, all within an isolated Podman network.
