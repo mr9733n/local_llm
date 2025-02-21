@@ -204,6 +204,11 @@ wsl -t Ubuntu-24.04
 
 ## **8. Download Models**
 
+- **All in one**
+```sh
+echo "gemma gemma:2b gemma2 gemma2:2b qwen2.5-coder qwen2.5-coder:3b qwen2.5-coder:1.5b qwen2.5-coder:0.5b codellama llama3.2-vision mistral-nemo starcoder2 starcoder2:7b dolphin3 deepscaler llama3.2:1b llama3.2 deepseek-r1:1.5b deepseek-r1 deepseek-r1:8b deepseek-coder-v2 deepseek-coder deepseek-coder:6.7b llama2-uncensored openthinker codegemma codegemma:2b phi llava phi3 mistral" | xargs -n 1 podman exec -it ollama ollama pull
+```
+- **One by one**
 ```sh
 podman exec -it ollama ollama pull gemma
 ```
